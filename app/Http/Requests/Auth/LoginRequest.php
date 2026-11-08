@@ -25,13 +25,15 @@ class LoginRequest extends FormRequest
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
-    public function rules(): array
-    {
-        return [
-            'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'string'],
-        ];
-    }
+        public function rules(): array
+            {
+                return [
+                    'email' => ['required', 'string', 'email'],
+                    'password' => ['required', 'string'],
+                    // Jika kolom ini diisi, request langsung digagalkan karena pasti bot!
+                    'username_bot_trap' => ['nullable', 'string', 'max:0'], 
+                ];
+            }
 
     /**
      * Attempt to authenticate the request's credentials.
@@ -60,7 +62,7 @@ class LoginRequest extends FormRequest
      */
     public function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 3)) {
             return;
         }
 

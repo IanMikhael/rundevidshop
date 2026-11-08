@@ -44,7 +44,11 @@ class ProductController extends Controller
             'price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
             'description' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048', // Validasi foto (maks 2MB)
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            // Validasi untuk array varian dinamis
+            'variants' => 'nullable|array',
+            'variants.*.name' => 'required_with:variants|string|max:255',
+            'variants.*.price' => 'required_with:variants|numeric|min:0',
         ]);
 
         // Proses upload gambar
@@ -53,13 +57,22 @@ class ProductController extends Controller
             $validated['image_url'] = '/storage/' . $path;
         }
 
-        Product::create($validated);
+        // 1. Simpan Produk Utama
+        $product = Product::create($validated);
+
+        // 2. Simpan Varian Produk (Jika form varian diisi)
+        if ($request->has('variants') && is_array($request->variants) && count($request->variants) > 0) {
+            $product->variants()->createMany($request->variants);
+        }
 
         return redirect()->route('admin.products.index')->with('success', 'Produk berhasil ditambahkan!');
     }
 
     public function edit(Product $product)
     {
+        // PENTING: Load relasi 'variants' agar data muncul di halaman form edit
+        $product->load('variants');
+
         return Inertia::render('Admin/Products/Edit', [
             'product' => $product,
             'categories' => Category::all()
@@ -70,11 +83,16 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
+            'custom_label' => 'nullable|string|max:50',
             'category_id' => 'required|exists:categories,id',
             'price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048', 
+            // Validasi untuk array varian dinamis
+            'variants' => 'nullable|array',
+            'variants.*.name' => 'required_with:variants|string|max:255',
+            'variants.*.price' => 'required_with:variants|numeric|min:0',
         ]);
 
         // Proses jika ada upload gambar baru
@@ -90,7 +108,18 @@ class ProductController extends Controller
             $validated['image_url'] = '/storage/' . $path;
         }
 
+        // 1. Update Produk Utama
         $product->update($validated);
+
+        // 2. Update Varian Produk
+        if ($request->has('variants') && is_array($request->variants) && count($request->variants) > 0) {
+            // Hapus varian lama, ganti dengan setingan varian yang baru dari form
+            $product->variants()->delete();
+            $product->variants()->createMany($request->variants);
+        } else {
+            // Jika form varian dikosongkan oleh admin, hapus semua varian yang menempel
+            $product->variants()->delete();
+        }
 
         return redirect()->route('admin.products.index')->with('success', 'Produk berhasil diupdate!');
     }

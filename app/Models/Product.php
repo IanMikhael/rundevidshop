@@ -10,8 +10,14 @@ class Product extends Model
 {
     protected $fillable = [
         'category_id', 'title', 'description', 
-        'price', 'stock', 'image_url'
+        'price', 'stock', 'image_url', 'custom_label','views'
     ];
+
+    // Tambahkan relasi ini di dalam class Product
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
 
     public function category(): BelongsTo
     {

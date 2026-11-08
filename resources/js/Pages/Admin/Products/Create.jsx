@@ -5,11 +5,13 @@ import { useState } from 'react';
 export default function Create({ categories }) {
     const { data, setData, post, processing, errors } = useForm({
         title: '',
+        custom_label: '', // Diperbaiki: tidak pakai product?. karena ini form Create
         category_id: '',
         price: '',
         stock: '',
         description: '',
         image: null,
+        variants: [], // Tambahan state untuk menyimpan data varian dinamis
     });
 
     // State untuk preview gambar sebelum diupload
@@ -24,6 +26,23 @@ export default function Create({ categories }) {
             setData('image', null);
             setPreviewUrl(null);
         }
+    };
+
+    // Fungsi-fungsi untuk mengelola baris varian (Tambah, Hapus, Update)
+    const addVariant = () => {
+        setData('variants', [...data.variants, { name: '', price: '' }]);
+    };
+
+    const removeVariant = (index) => {
+        const newVariants = [...data.variants];
+        newVariants.splice(index, 1);
+        setData('variants', newVariants);
+    };
+
+    const updateVariant = (index, field, value) => {
+        const newVariants = [...data.variants];
+        newVariants[index][field] = value;
+        setData('variants', newVariants);
     };
 
     const submit = (e) => {
@@ -46,7 +65,7 @@ export default function Create({ categories }) {
                 <form onSubmit={submit} encType="multipart/form-data">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         
-                        {/* KOLOM KIRI (Informasi Utama) */}
+                        {/* KOLOM KIRI (Informasi Utama & Varian) */}
                         <div className="lg:col-span-2 space-y-6">
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                                 <h3 className="text-base font-bold text-slate-800 mb-5 pb-3 border-b border-slate-100">Informasi Dasar</h3>
@@ -80,7 +99,7 @@ export default function Create({ categories }) {
                                 </div>
                             </div>
 
-                            {/* Card Harga & Stok */}
+                            {/* Card Harga & Stok (Utama) */}
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                                 <h3 className="text-base font-bold text-slate-800 mb-5 pb-3 border-b border-slate-100">Harga & Inventaris</h3>
                                 
@@ -121,6 +140,77 @@ export default function Create({ categories }) {
                                         {errors.stock && <p className="text-red-500 text-xs mt-1.5 font-medium">{errors.stock}</p>}
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* CARD VARIAN PRODUK */}
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 pb-3 border-b border-slate-100 gap-3">
+                                    <div>
+                                        <h3 className="text-base font-bold text-slate-800">Varian Produk (Opsional)</h3>
+                                        <p className="text-xs text-slate-500 mt-0.5">Tambahkan pilihan durasi/paket (cth: 1 Bulan, Lifetime, dll).</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={addVariant}
+                                        className="bg-emerald-50 text-emerald-700 px-3.5 py-2 rounded-xl text-sm font-bold border border-emerald-200 hover:bg-emerald-100 transition shadow-sm flex items-center gap-1.5 flex-shrink-0"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                        Tambah Varian
+                                    </button>
+                                </div>
+
+                                {data.variants.length === 0 ? (
+                                    <div className="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                                        <p className="text-sm text-slate-500 font-medium">Tidak ada varian tambahan.</p>
+                                        <p className="text-xs text-slate-400 mt-1">Produk ini hanya akan menggunakan harga utama di atas.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {data.variants.map((variant, index) => (
+                                            <div key={index} className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-slate-50 p-4 rounded-xl border border-slate-200 relative group">
+                                                <div className="w-full sm:flex-1">
+                                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Nama Varian <span className="text-red-500">*</span></label>
+                                                    <input
+                                                        type="text"
+                                                        value={variant.name}
+                                                        onChange={(e) => updateVariant(index, 'name', e.target.value)}
+                                                        className="block w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                                        placeholder="cth: 1 Bulan Premium"
+                                                        required
+                                                    />
+                                                    {errors[`variants.${index}.name`] && <p className="text-red-500 text-xs mt-1 font-medium">{errors[`variants.${index}.name`]}</p>}
+                                                </div>
+                                                <div className="w-full sm:flex-1">
+                                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Harga Varian <span className="text-red-500">*</span></label>
+                                                    <div className="relative">
+                                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                            <span className="text-slate-500 font-medium text-xs">Rp</span>
+                                                        </div>
+                                                        <input
+                                                            type="number"
+                                                            value={variant.price}
+                                                            onChange={(e) => updateVariant(index, 'price', e.target.value)}
+                                                            className="block w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                                            placeholder="0"
+                                                            required
+                                                        />
+                                                    </div>
+                                                    {errors[`variants.${index}.price`] && <p className="text-red-500 text-xs mt-1 font-medium">{errors[`variants.${index}.price`]}</p>}
+                                                </div>
+                                                <div className="w-full sm:w-auto pt-0 sm:pt-6">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeVariant(index)}
+                                                        className="w-full sm:w-auto text-red-600 font-bold text-sm px-4 py-2 bg-red-50 rounded-lg hover:bg-red-100 transition border border-red-100 flex justify-center items-center gap-1.5"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                        <span className="sm:hidden">Hapus Varian</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -189,6 +279,28 @@ export default function Create({ categories }) {
                                         ))}
                                     </select>
                                     {errors.category_id && <p className="text-red-500 text-xs mt-1.5 font-medium">{errors.category_id}</p>}
+                                </div>
+                            </div>
+
+                            {/* Card Label Visual (Badge Khusus) */}
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                <h3 className="text-base font-bold text-slate-800 mb-5 pb-3 border-b border-slate-100">Label Visual (Badge)</h3>
+                                
+                                <div>
+                                    <select 
+                                        value={data.custom_label} 
+                                        onChange={e => setData('custom_label', e.target.value)}
+                                        className="block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white cursor-pointer transition-colors"
+                                    >
+                                        <option value="">-- Tanpa Label --</option>
+                                        <option value="Terlaris 🔥">Terlaris 🔥</option>
+                                        <option value="Stok Terbatas ⏳">Stok Terbatas ⏳</option>
+                                        <option value="Garansi Resmi 🛡️">Garansi Resmi 🛡️</option>
+                                        <option value="Promo Khusus 🎁">Promo Khusus 🎁</option>
+                                        <option value="Pilihan Sultan 💎">Pilihan Sultan 💎</option>
+                                    </select>
+                                    <p className="text-xs text-slate-400 mt-2">Label ini akan muncul mencolok di foto produk untuk menarik perhatian pembeli.</p>
+                                    {errors.custom_label && <p className="text-red-500 text-xs mt-1.5 font-medium">{errors.custom_label}</p>}
                                 </div>
                             </div>
 

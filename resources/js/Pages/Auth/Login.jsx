@@ -10,6 +10,7 @@ export default function Login({ status, canResetPassword }) {
         email: '',
         password: '',
         remember: false,
+        username_bot_trap: '', // 👈 State untuk jebakan bot
     });
 
     const submit = (e) => {
@@ -35,6 +36,18 @@ export default function Login({ status, canResetPassword }) {
             </div>
 
             <form onSubmit={submit} className="space-y-5">
+                {/* 🛡️ JEBAKAN BOT (Honeypot) - Disembunyikan dari manusia, bot otomatis akan mengisinya */}
+                <div className="hidden" aria-hidden="true">
+                    <input
+                        type="text"
+                        name="username_bot_trap"
+                        value={data.username_bot_trap}
+                        onChange={(e) => setData('username_bot_trap', e.target.value)}
+                        tabIndex="-1"
+                        autoComplete="off"
+                    />
+                </div>
+
                 <div>
                     <InputLabel htmlFor="email" value="Alamat Email" className="text-slate-700 font-semibold ml-1" />
                     <TextInput

@@ -1,9 +1,10 @@
 import PublicLayout from '@/Layouts/PublicLayout';
 import { Head, Link } from '@inertiajs/react';
+import { useState } from 'react';
+import DOMPurify from 'dompurify';
 
 export default function ProductDetail({ product, whatsappNumber, waTemplate }) {
-    
-    // Fungsi cek diskon (sama seperti di beranda)
+    // 1. Logika Diskon
     const getActiveDiscount = (discounts) => {
         if (!discounts || discounts.length === 0) return null;
         const today = new Date();
@@ -17,25 +18,36 @@ export default function ProductDetail({ product, whatsappNumber, waTemplate }) {
         });
     };
 
-    
     const activeDiscount = getActiveDiscount(product.discounts);
-    const originalPrice = parseInt(product.price);
+    
+    // Cek apakah produk memiliki varian
+    const hasVariants = product.variants && product.variants.length > 0;
+
+    // State untuk menyimpan varian yang sedang dipilih pembeli
+    // Default: pilih varian pertama jika ada, jika tidak null
+    const [selectedVariant, setSelectedVariant] = useState(hasVariants ? product.variants[0] : null);
+
+    // 2. Logika Harga (Dinamis: Harga Varian terpilih ATAU Harga Utama)
+    const originalPrice = selectedVariant 
+        ? parseInt(selectedVariant.price) 
+        : parseInt(product.price);
+
     const finalPrice = activeDiscount 
         ? originalPrice - (originalPrice * (activeDiscount.discount_percentage / 100))
         : originalPrice;
 
-    // --- LOGIKA REPLACE TEKS WA OTOMATIS ---
+    // --- 3. LOGIKA REPLACE TEKS WA OTOMATIS ---
     const noWhatsApp = whatsappNumber; 
-    
-    // Gunakan template dari database, atau nilai default jika kosong
     let rawWaText = waTemplate || "Halo Admin! Saya tertarik beli [produk] harga [harga].";
     
-    // Replace [produk] dengan nama produk
-    rawWaText = rawWaText.replace(/\[produk\]/gi, product.title);
-    // Replace [harga] dengan nominal harga (format rupiah)
+    // Gabungkan nama produk utama dengan nama varian (jika ada varian terpilih)
+    const productTitleWithVariant = selectedVariant 
+        ? `${product.title} (${selectedVariant.name})`
+        : product.title;
+
+    rawWaText = rawWaText.replace(/\[produk\]/gi, productTitleWithVariant);
     rawWaText = rawWaText.replace(/\[harga\]/gi, `Rp ${finalPrice.toLocaleString('id-ID')}`);
 
-    // Encode teks agar valid format URL-nya
     const textWa = encodeURIComponent(rawWaText);
     const waLink = `https://wa.me/${noWhatsApp}?text=${textWa}`;
 
@@ -101,13 +113,43 @@ export default function ProductDetail({ product, whatsappNumber, waTemplate }) {
                                     </p>
                                 </div>
 
+                                {/* --- AREA VARIAN PRODUK (Akan Muncul Jika Varian > 0) --- */}
+                                {hasVariants && (
+                                    <div className="mb-8">
+                                        <h3 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">
+                                            Pilih Varian
+                                        </h3>
+                                        <div className="flex flex-wrap gap-3">
+                                            {product.variants.map((variant) => (
+                                                <button
+                                                    key={variant.id}
+                                                    onClick={() => setSelectedVariant(variant)}
+                                                    className={`px-4 py-2.5 rounded-lg border-2 text-sm font-bold transition-all duration-200 ${
+                                                        selectedVariant?.id === variant.id
+                                                            ? 'border-emerald-600 bg-emerald-50 text-emerald-700 shadow-sm'
+                                                            : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-300 hover:bg-gray-50'
+                                                    }`}
+                                                >
+                                                    {variant.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {/* --- END AREA VARIAN --- */}
+
                                 {/* Deskripsi */}
-                                <div className="mb-8">
-                                    <h3 className="text-lg font-bold text-slate-800 mb-2">Deskripsi Produk</h3>
-                                    <p className="text-gray-600 whitespace-pre-line leading-relaxed">
-                                        {product.description || 'Belum ada deskripsi mendetail untuk produk ini.'}
-                                    </p>
-                                </div>
+                                    <div className="mb-8">
+                                        <h3 className="text-lg font-bold text-slate-800 mb-2">Deskripsi Produk</h3>
+                                        <div 
+                                            className="text-gray-600 whitespace-pre-line leading-relaxed"
+                                            dangerouslySetInnerHTML={{ 
+                                                __html: product.description 
+                                                    ? DOMPurify.sanitize(product.description) 
+                                                    : 'Belum ada deskripsi mendetail untuk produk ini.' 
+                                            }} 
+                                        />
+                                    </div>
 
                                 {/* Tombol Aksi */}
                                 <div className="flex flex-col sm:flex-row gap-4">
@@ -117,7 +159,6 @@ export default function ProductDetail({ product, whatsappNumber, waTemplate }) {
                                         rel="noreferrer"
                                         className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold py-3 px-6 rounded-xl shadow-md transition transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
                                     >
-                                        {/* Icon WhatsApp SVG */}
                                         <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.099.824zm-3.423-14.416c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm.029 18.88c-1.161 0-2.305-.292-3.318-.844l-3.677.964.984-3.595c-.607-1.052-.927-2.246-.926-3.468.001-3.825 3.113-6.937 6.937-6.937 3.825 0 6.938 3.112 6.938 6.937 0 3.825-3.113 6.938-6.938 6.938z"/></svg>
                                         Beli via WhatsApp
                                     </a>

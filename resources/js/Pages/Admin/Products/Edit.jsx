@@ -5,11 +5,13 @@ import { useState, useEffect } from 'react';
 export default function Edit({ product, categories }) {
     const { data, setData, post, processing, errors } = useForm({
         title: product.title || '',
+        custom_label: product.custom_label || '', // Memuat label lama
         category_id: product.category_id || '',
         price: product.price || '',
         stock: product.stock || '',
         description: product.description || '',
         image: null,
+        variants: product.variants || [], // State untuk load varian lama
         _method: 'put', // Trik Wajib Laravel untuk upload file di route PUT
     });
 
@@ -34,6 +36,23 @@ export default function Edit({ product, categories }) {
         };
     }, [previewUrl]);
 
+    // Fungsi-fungsi untuk mengelola baris varian (Tambah, Hapus, Update)
+    const addVariant = () => {
+        setData('variants', [...data.variants, { name: '', price: '' }]);
+    };
+
+    const removeVariant = (index) => {
+        const newVariants = [...data.variants];
+        newVariants.splice(index, 1);
+        setData('variants', newVariants);
+    };
+
+    const updateVariant = (index, field, value) => {
+        const newVariants = [...data.variants];
+        newVariants[index][field] = value;
+        setData('variants', newVariants);
+    };
+
     const submit = (e) => {
         e.preventDefault();
         post(route('admin.products.update', product.id));
@@ -55,14 +74,14 @@ export default function Edit({ product, categories }) {
                     </Link>
                     <div>
                         <h2 className="text-lg font-bold text-slate-800 line-clamp-1">{product.title}</h2>
-                        <p className="text-sm text-slate-500">Perbarui informasi, harga, stok, atau gambar produk ini.</p>
+                        <p className="text-sm text-slate-500">Perbarui informasi, harga, stok, varian, atau gambar produk ini.</p>
                     </div>
                 </div>
 
                 <form onSubmit={submit} encType="multipart/form-data">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         
-                        {/* KOLOM KIRI (Informasi Utama) */}
+                        {/* KOLOM KIRI (Informasi Utama & Varian) */}
                         <div className="lg:col-span-2 space-y-6">
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                                 <h3 className="text-base font-bold text-slate-800 mb-5 pb-3 border-b border-slate-100">Informasi Dasar</h3>
@@ -133,6 +152,77 @@ export default function Edit({ product, categories }) {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* CARD VARIAN PRODUK */}
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 pb-3 border-b border-slate-100 gap-3">
+                                    <div>
+                                        <h3 className="text-base font-bold text-slate-800">Varian Produk (Opsional)</h3>
+                                        <p className="text-xs text-slate-500 mt-0.5">Tambahkan pilihan durasi/paket (cth: 1 Bulan, Lifetime, dll).</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={addVariant}
+                                        className="bg-emerald-50 text-emerald-700 px-3.5 py-2 rounded-xl text-sm font-bold border border-emerald-200 hover:bg-emerald-100 transition shadow-sm flex items-center gap-1.5 flex-shrink-0"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                        Tambah Varian
+                                    </button>
+                                </div>
+
+                                {data.variants.length === 0 ? (
+                                    <div className="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                                        <p className="text-sm text-slate-500 font-medium">Tidak ada varian tambahan.</p>
+                                        <p className="text-xs text-slate-400 mt-1">Produk ini hanya akan menggunakan harga utama di atas.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {data.variants.map((variant, index) => (
+                                            <div key={index} className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-slate-50 p-4 rounded-xl border border-slate-200 relative group">
+                                                <div className="w-full sm:flex-1">
+                                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Nama Varian <span className="text-red-500">*</span></label>
+                                                    <input
+                                                        type="text"
+                                                        value={variant.name}
+                                                        onChange={(e) => updateVariant(index, 'name', e.target.value)}
+                                                        className="block w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                                        placeholder="cth: 1 Bulan Premium"
+                                                        required
+                                                    />
+                                                    {errors[`variants.${index}.name`] && <p className="text-red-500 text-xs mt-1 font-medium">{errors[`variants.${index}.name`]}</p>}
+                                                </div>
+                                                <div className="w-full sm:flex-1">
+                                                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Harga Varian <span className="text-red-500">*</span></label>
+                                                    <div className="relative">
+                                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                            <span className="text-slate-500 font-medium text-xs">Rp</span>
+                                                        </div>
+                                                        <input
+                                                            type="number"
+                                                            value={variant.price}
+                                                            onChange={(e) => updateVariant(index, 'price', e.target.value)}
+                                                            className="block w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                                            placeholder="0"
+                                                            required
+                                                        />
+                                                    </div>
+                                                    {errors[`variants.${index}.price`] && <p className="text-red-500 text-xs mt-1 font-medium">{errors[`variants.${index}.price`]}</p>}
+                                                </div>
+                                                <div className="w-full sm:w-auto pt-0 sm:pt-6">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeVariant(index)}
+                                                        className="w-full sm:w-auto text-red-600 font-bold text-sm px-4 py-2 bg-red-50 rounded-lg hover:bg-red-100 transition border border-red-100 flex justify-center items-center gap-1.5"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                        <span className="sm:hidden">Hapus Varian</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* KOLOM KANAN (Gambar, Kategori & Aksi) */}
@@ -142,14 +232,12 @@ export default function Edit({ product, categories }) {
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                                 <div className="flex justify-between items-center mb-5 pb-3 border-b border-slate-100">
                                     <h3 className="text-base font-bold text-slate-800">Media Produk</h3>
-                                    {/* Indikator status gambar */}
                                     {previewUrl && <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-md uppercase">Foto Baru</span>}
                                 </div>
                                 
                                 <div className="space-y-4">
                                     <label className="block text-sm font-semibold text-slate-700">Foto Utama</label>
                                     
-                                    {/* Area Drag & Drop / Preview */}
                                     <div className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors relative overflow-hidden group ${previewUrl ? 'border-amber-300' : 'border-slate-300'}`}>
                                         
                                         {displayImage ? (
@@ -161,7 +249,6 @@ export default function Edit({ product, categories }) {
                                                 </div>
                                             </div>
                                         ) : (
-                                            /* State Kosong (Jika produk sebelumnya tidak punya foto) */
                                             <div className="space-y-2 text-center py-4">
                                                 <svg className="mx-auto h-12 w-12 text-slate-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                                                     <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -174,7 +261,6 @@ export default function Edit({ product, categories }) {
                                             </div>
                                         )}
                                         
-                                        {/* Input file */}
                                         <input 
                                             type="file" 
                                             onChange={handleImageChange} 
@@ -206,10 +292,32 @@ export default function Edit({ product, categories }) {
                                 </div>
                             </div>
 
+                            {/* Card Label Visual (Badge Khusus) */}
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                <h3 className="text-base font-bold text-slate-800 mb-5 pb-3 border-b border-slate-100">Label Visual (Badge)</h3>
+                                
+                                <div>
+                                    <select 
+                                        value={data.custom_label} 
+                                        onChange={e => setData('custom_label', e.target.value)}
+                                        className="block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white cursor-pointer transition-colors"
+                                    >
+                                        <option value="">-- Tanpa Label --</option>
+                                        <option value="Terlaris">Terlaris</option>
+                                        <option value="Stok Terbatas">Stok Terbatas</option>
+                                        <option value="Garansi Resmi">Garansi Resmi</option>
+                                        <option value="Promo Khusus">Promo Khusus</option>
+                                        <option value="Pilihan Sultan">Pilihan Sultan</option>
+                                    </select>
+                                    <p className="text-xs text-slate-400 mt-2">Label ini akan muncul mencolok di foto produk untuk menarik perhatian pembeli.</p>
+                                    {errors.custom_label && <p className="text-red-500 text-xs mt-1.5 font-medium">{errors.custom_label}</p>}
+                                </div>
+                            </div>
+
                             {/* Area Tombol Aksi */}
                             <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row gap-3">
                                 <Link 
-                                    href={route('admin.products.index')} 
+                                    href={route('admin.products.index')}
                                     className="flex-1 flex justify-center py-2.5 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                                 >
                                     Batal
